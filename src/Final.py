@@ -96,7 +96,7 @@ for stat in stats_offsets_for_stats_tap:
 current_ng_var = tk.StringVar(value="N/A")
 new_ng_var = tk.StringVar()
 
-
+inventory_type_var = tk.StringVar(value="Inventory")
 #path
 userdata_path=None
 import_path=None
@@ -217,6 +217,8 @@ def select_userdata(path, folder_name):
 
         userdata_path = path
         load_data()
+        inventoryprint()
+        display_inventory("Inventory")
         
 
 
@@ -240,6 +242,7 @@ def select_userdata(path, folder_name):
         save_file()
 
         load_data()
+
         messagebox.showinfo("Import Successful", f"Imported character from {import_path} and replaced Steam ID.")
 
 
@@ -457,6 +460,7 @@ def load_data():
     current_runes_var.set(current_runes_value)
     
     warp_status()
+      
     print('souls', current_runes_value)
     print('ng', current_ng)
 
@@ -873,7 +877,54 @@ def spawn_items(item, item_type, quantity=None):
     print(f'Spawned {item} x{quantity}')
     print(f'Slot data: {slot.hex().upper()}')
     print(f'At offset: {empty_slot_offset:08X}')
-    
+
+
+
+def delete_goods(item_name_delete):
+    global data, inventory_items
+
+    # Get the ID from all JSONs
+    item_id_str = (
+        goods_and_magic_json.get(item_name_delete)
+        or MeleeWeapons_json.get(item_name_delete)
+        or armor_json.get(item_name_delete)
+        or rings_json.get(item_name_delete)
+    )
+    if item_id_str is None:
+        print('item name error')
+        return
+
+    # Convert to integer safely
+    try:
+        if item_id_str.lower().startswith("0x"):
+            item_id_int = int(item_id_str, 16)
+        else:
+            item_id_int = int(item_id_str)
+    except ValueError:
+        print(f"Invalid item ID: {item_id_str}")
+        return
+
+    found = False
+    print(f"Trying to delete {item_name_delete} with ID {item_id_int}")
+    for item in inventory_items:
+        print(item)
+
+
+    for slot_type, item_id, quantity, some_val, offset in inventory_items:
+        if item_id == item_id_int:
+            # Overwrite bytes at offset
+            data = data[:offset] + b'\x00' * 0x1c + data[offset+0x1c:]
+            print(f'Deleted item: {item_name_delete} at offset {offset:08X}')
+            found = True
+            break
+
+
+    if not found:
+        print('no item name exists')
+
+
+
+
 IMPORT_MODE=None
 
 ##Save import
@@ -1584,6 +1635,97 @@ def add_all_armors():
     messagebox.showinfo("Info", "All Armors added to inventory. . The Armor will show as broken, buy or collect and item to fix it")
 tk.Button(armors_tab, text="Add All Armors", command=add_all_armors).pack(padx=5, pady=2)
 
+
+#inventory 
+# --- Player Inventory Tab ---
+inventory_tab = ttk.Frame(notebook)
+
+# --- Type filter ---
+filter_frame = tk.Frame(inventory_tab)
+filter_frame.pack(side="top", fill="x", padx=10, pady=5)
+
+tk.Label(filter_frame, text="Filter by Type:").pack(side="left", padx=5)
+inventory_type_var = tk.StringVar(value="Inventory")  # default to Goods
+type_options = ["Inventory"]
+type_menu = ttk.OptionMenu(filter_frame, inventory_type_var, type_options[0], *type_options)
+type_menu.pack(side="left", padx=5)
+
+# --- Treeview setup ---
+columns = ("Type", "Inventory")
+inventory_tree = ttk.Treeview(inventory_tab, columns=columns, show="headings", height=20)
+for col in columns:
+    inventory_tree.heading(col, text=col)
+    inventory_tree.column(col, width=150, anchor="center")
+
+scrollbar = ttk.Scrollbar(inventory_tab, orient="vertical", command=inventory_tree.yview)
+inventory_tree.configure(yscrollcommand=scrollbar.set)
+
+inventory_tree.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+scrollbar.pack(side="right", fill="y")
+
+def display_inventory(item_type):
+    global data
+
+    inventory_tree.delete(*inventory_tree.get_children())
+    print(inventory_items)
+
+    if item_type == "Inventory":
+        # Merge all JSONs
+        source_json = {}
+        for d in (goods_and_magic_json, MeleeWeapons_json, armor_json, rings_json):
+            if isinstance(d, dict):
+                source_json.update(d)
+
+        source_items = inventory_items
+
+        for name, id_str in source_json.items():
+            if not isinstance(id_str, str):
+                id_str = str(id_str)
+
+            id_str = id_str.strip().replace(" ", "")
+
+            # Convert string ID to integer (supports decimal or hex)
+            try:
+                if id_str.lower().startswith("0x"):
+                    id_int = int(id_str, 16)
+                else:
+                    id_int = int(id_str)
+            except ValueError as e:
+                print(f"[!] Error converting {name} ({id_str}): {e}")
+                continue
+
+            for _, item_id, quantity, _, _ in source_items:
+                if id_int == item_id:
+
+                    inventory_tree.insert("", "end", values=(item_type, name, quantity, "-", "-"))
+
+
+    return data
+
+                    
+
+
+
+    
+def delete_selected_item():
+    selected = inventory_tree.selection()
+    if not selected:
+        print("No item selected")
+        return
+    item = inventory_tree.item(selected[0])
+    # Only unpack the first three columns
+    item_type, item_name, quantity = item["values"][:3]
+    
+
+    
+    delete_goods(item_name)
+    inventoryprint()
+    display_inventory("Inventory")
+  
+## --- Control frames ---
+goods_frame = tk.Frame(inventory_tab)
+ttk.Button(inventory_tab, text="Delete Item", command=delete_selected_item).pack(side="left", padx=5)
+notebook.add(inventory_tab, text="Player Inventory")
 messagebox.showinfo("Info", "No idea what will get you banned. Use at your own risk.")
 
 
