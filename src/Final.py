@@ -67,7 +67,7 @@ REVERSE_CLASS_MAP = {v: k for k, v in CLASS_MAP.items()}
 
 # Main window
 window = tk.Tk()
-window.title("Elden Ring Save Editor")
+window.title("DSR Save Editor")
 
 #list
 char_name = []
@@ -1733,4 +1733,5 @@ my_label = tk.Label(window, text="Made by Alfazari911 ", anchor="e", padx=10)
 my_label.pack(side="top", anchor="ne", padx=10, pady=5)
 
 window.mainloop()
+
 
