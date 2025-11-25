@@ -261,8 +261,6 @@ def char_name_to_userdata(folder_name=None, imported=None):
             with open(file_path, "rb") as f:
                 data = f.read()
                 name=find_char_name(data)
-                if name is None:
-                    return
                 if folder_name == 'split':
                     char_name.append((name, file_path))
                 elif folder_name == 'imported' and imported is not None and IMPORT_MODE=='PC':
@@ -276,8 +274,6 @@ def char_name_to_userdata(folder_name=None, imported=None):
                 data = f.read()
                 name=find_char_name(data)
                 print('here')
-                if name is None:
-                    return
                 print('here')
                 if imported is None:
                     char_name.append((name, file_path))
