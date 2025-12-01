@@ -8,7 +8,7 @@ from ds2unpackercopyimport import decrypt_ds2_sl2_import
 
 #Health=0x60
 #stanimna=0x7c
-magic_pattern='00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF'
+magic_pattern='00 FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF'
 souls_distance = -291
 ng_distance= +0x1E3A7
 health_distance=-419 # + 4 + 4 
@@ -195,19 +195,32 @@ def save_as():
 
 
 def find_char_name(data):
-    magic_bytes=bytes.fromhex(magic_pattern)
-    magic_offset=data.find(magic_bytes)
-    if magic_offset == -1:
-        return None
-    
-    name_offset=magic_offset-0x10f
-
-
+    name_offset = 0xF4
     max_chars = 16
-    raw_name = data[name_offset:name_offset + max_chars * 2]
-    char_name = raw_name.decode("utf-16-le", errors="ignore").rstrip("\x00")
 
-    return char_name
+    raw = data[name_offset:name_offset + max_chars * 2]
+
+    # Find where the first UTF-16 null terminator occurs
+    end = raw.find(b"\x00\x00")
+    if end != -1:
+        raw = raw[:end]  # cut at first null
+
+    # If no characters before null or empty -> return None
+    if not raw:
+        return None
+
+    try:
+        name = raw.decode("utf-16-le", errors="ignore")
+    except:
+        return None
+
+    name = name.strip("\x00")
+
+    if not name:
+        return None
+
+    return name
+
 def select_userdata(path, folder_name):
     global userdata_path, import_path, data, imported_data
 
@@ -261,6 +274,7 @@ def char_name_to_userdata(folder_name=None, imported=None):
             with open(file_path, "rb") as f:
                 data = f.read()
                 name=find_char_name(data)
+                print(name)
                 if folder_name == 'split':
                     char_name.append((name, file_path))
                 elif folder_name == 'imported' and imported is not None and IMPORT_MODE=='PC':
