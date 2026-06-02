@@ -400,7 +400,19 @@ def open_file():
         display_char_name('split')
 
 
+def increment_inv_counter():
+    global data, MODE
 
+    if MODE == 'PS4':
+        counter_offset = 0xE370
+    elif MODE == 'PC':
+        counter_offset = 0xE35C
+
+    current_counter = find_value_at_offset(data, counter_offset, byte_size=4)
+    if current_counter is not None:
+        new_counter = current_counter + 1
+        data = write_value_at_offset(data, counter_offset, new_counter, byte_size=4)
+        print(f"Inventory counter incremented: {current_counter} -> {new_counter}")
 
 def load_data():
     global userdata_path, current_name, data, magic_offset
@@ -889,6 +901,7 @@ def spawn_items(item, item_type, quantity=None):
     
     empty_slot_offset = empty_slot_offset + 4
     data = data[:empty_slot_offset] + slot + data[empty_slot_offset+len(slot):]
+    increment_inv_counter()
     print(f'Spawned {item} x{quantity}')
     print(f'Slot data: {slot.hex().upper()}')
     print(f'At offset: {empty_slot_offset:08X}')
