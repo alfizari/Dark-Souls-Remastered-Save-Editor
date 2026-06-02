@@ -195,7 +195,10 @@ def save_as():
 
 
 def find_char_name(data):
-    name_offset = 0xF4
+    if MODE == 'PS4':
+        name_offset = 0x108
+    elif MODE == 'PC':
+        name_offset = 0xF4
     max_chars = 16
 
     raw = data[name_offset:name_offset + max_chars * 2]
@@ -481,6 +484,8 @@ def update_name(new_name):
     magic_offset = data.find(bytes.fromhex(magic_pattern))
     offset = magic_offset - 0x10f
     snd_offset=magic_offset-139
+    print('offset', offset)
+    print('snd_offset', snd_offset)
 
     # Encode to UTF-16 LE
     new_name_utf16 = new_name.encode("utf-16-le")
