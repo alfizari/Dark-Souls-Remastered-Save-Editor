@@ -194,21 +194,21 @@ def save_as():
 
 
 
-def find_char_name(data):
-    if MODE == 'PS4':
+def find_char_name(data, mode=None):
+    if mode is None:
+        mode = MODE
+    if mode == 'PS4':
         name_offset = 0x108
-    elif MODE == 'PC':
+    elif mode == 'PC':
         name_offset = 0xF4
     max_chars = 16
 
     raw = data[name_offset:name_offset + max_chars * 2]
 
-    # Find where the first UTF-16 null terminator occurs
     end = raw.find(b"\x00\x00")
     if end != -1:
-        raw = raw[:end]  # cut at first null
+        raw = raw[:end]
 
-    # If no characters before null or empty -> return None
     if not raw:
         return None
 
@@ -251,9 +251,9 @@ def select_userdata(path, folder_name):
         if IMPORT_MODE=='PS4' and MODE=='PS4':
             data= imported_data
         if IMPORT_MODE=='PC' and MODE=='PS4':
-            data=data[:4]+imported_data + data[0x60004:]
+            data=data[:0x14]+imported_data + data[0x60014:]
         if IMPORT_MODE=='PS4' and MODE=='PC':
-            data=imported_data[4:0x60004]
+            data=imported_data[0x14:0x60014]
 
         save_file()
 
@@ -266,37 +266,35 @@ def select_userdata(path, folder_name):
 def char_name_to_userdata(folder_name=None, imported=None):
     global char_name, imported_name, current_file_path
     char_name = []
-    imported_name=[]
+    imported_name = []
+
+    read_mode = IMPORT_MODE if imported is not None else MODE  # <-- key fix
 
     if folder_name is not None:
         split_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), folder_name)
         for i in range(10):
-
-            
             file_path = os.path.join(split_dir, f"USERDATA_0{i}")
             with open(file_path, "rb") as f:
                 data = f.read()
-                name=find_char_name(data)
+                name = find_char_name(data, mode=read_mode)  # <-- pass mode
                 print(name)
                 if folder_name == 'split':
                     char_name.append((name, file_path))
-                elif folder_name == 'imported' and imported is not None and IMPORT_MODE=='PC':
+                elif folder_name == 'imported' and imported is not None and IMPORT_MODE == 'PC':
                     imported_name.append((name, file_path))
     elif folder_name is None:
         if imported is None:
-            file_path=current_file_path
-        elif imported is not None and IMPORT_MODE=='PS4':
-            file_path=import_path
+            file_path = current_file_path
+        elif imported is not None and IMPORT_MODE == 'PS4':
+            file_path = import_path
         with open(file_path, "rb") as f:
-                data = f.read()
-                name=find_char_name(data)
-                print('here')
-                print('here')
-                if imported is None:
-                    char_name.append((name, file_path))
-                    print(char_name)
-                elif imported is not None:
-                    imported_name.append((name, file_path))
+            data = f.read()
+            name = find_char_name(data, mode=read_mode)  # <-- pass mode
+            if imported is None:
+                char_name.append((name, file_path))
+                print(char_name)
+            elif imported is not None:
+                imported_name.append((name, file_path))
 
 original_sl2_path=None
 
@@ -902,9 +900,6 @@ def spawn_items(item, item_type, quantity=None):
     empty_slot_offset = empty_slot_offset + 4
     data = data[:empty_slot_offset] + slot + data[empty_slot_offset+len(slot):]
     increment_inv_counter()
-    print(f'Spawned {item} x{quantity}')
-    print(f'Slot data: {slot.hex().upper()}')
-    print(f'At offset: {empty_slot_offset:08X}')
 
 
 
@@ -934,8 +929,6 @@ def delete_goods(item_name_delete):
 
     found = False
     print(f"Trying to delete {item_name_delete} with ID {item_id_int}")
-    for item in inventory_items:
-        print(item)
 
 
     for slot_type, item_id, quantity, some_val, offset in inventory_items:
@@ -1695,7 +1688,7 @@ def display_inventory(item_type):
     global data
 
     inventory_tree.delete(*inventory_tree.get_children())
-    print(inventory_items)
+
 
     if item_type == "Inventory":
         # Merge all JSONs
